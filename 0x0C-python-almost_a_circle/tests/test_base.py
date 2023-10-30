@@ -1,127 +1,169 @@
 #!/usr/bin/python3
 """
-    Test Case for task base.py in models directory.
+base module
 """
-import unittest
-from models.base import Base
-from models.square import Square
 import json
+import os
+import csv
+import turtle
 
 
-class TestBaseClass(unittest.TestCase):
+class Base:
     """
-        Test class for the base class.
+    Base implementation
     """
+    __nb_objects = 0
 
-    def test_id_none(self):
+    def __init__(self, id=None):
         """
-            initialise an instance of the base class with no id
+        init - initialization
+        Args:
+            id: object id
         """
-        b = Base()
-        self.assertEqual(1, b.id)
+        if id is not None:
+            self.id = id
+        else:
+            Base.__nb_objects += 1
+            self.id = Base.__nb_objects
 
-    def test_id(self):
+    @staticmethod
+    def to_json_string(list_dictionaries):
+        """returns the JSON string representation of list_dictionaries.
+        Args:
+            list_dictionaries: is a list of dictionaries
         """
-            Initialise an instance with id > 0
-        """
-        b = Base(12)
-        self.assertEqual(12, b.id)
+        if list_dictionaries is None or list_dictionaries == []:
+            return "[]"
+        else:
+            return json.dumps(list_dictionaries)
 
-    def test_id_zero(self):
+    @classmethod
+    def save_to_file(cls, list_objs):
+        """writes the JSON string representation of list_objs to a file.
+        Args:
+            list_objs: is a list of instances who inherits of Base
         """
-            Initialise instance with id == 0
-        """
-        b = Base(0)
-        self.assertEqual(0, b.id)
+        filename = cls.__name__ + ".json"
+        if list_objs is None or list_objs == []:
+            lst = "[]"
+        else:
+            lst = cls.to_json_string([o.to_dictionary() for o in list_objs])
+        with open(filename, 'w') as f:
+            f.write(lst)
 
-    def test_id_negative(self):
-        """
-            Initialise instance with id < 0
-        """
-        b = Base(-2)
-        self.assertEqual(-2, b.id)
+        return lst
 
-    def test_id_string(self):
+    @staticmethod
+    def from_json_string(json_string):
+        """returns the list of the JSON string representation json_string.
+        Args:
+            json_string: is a string representing a list of dictionaries
         """
-            Intialise instance with id is string
-        """
-        b = Base("Base")
-        self.assertEqual("Base", b.id)
+        if json_string is None or len(json_string) == 0:
+            return []
+        else:
+            return json.loads(json_string)
 
-    def test_id_list(self):
+    @classmethod
+    def create(cls, **dictionary):
+        """returns an instance with all attributes already set.
+        Args:
+            dictionary: can be thought of as a double pointer to a dictionary
         """
-            Initialise instance with id is list
-        """
-        b = Base([1, 3, 6])
-        self.assertEqual([1, 3, 6], b.id)
+        if cls.__name__ == "Rectangle":
+            dummy = cls(1, 1)
+        else:
+            dummy = cls(1)
 
-    def test_id_tuple(self):
-        """
-            Initialise instance with id is tuple
-        """
-        b = Base((1, 3))
-        self.assertEqual((1, 3), b.id)
+        dummy.update(**dictionary)
+        return dummy
 
-    def test_id_dict(self):
-        """
-            Initialise instance with id is dict
-        """
-        b = Base({'id': 12})
-        self.assertEqual({'id': 12}, b.id)
+    @classmethod
+    def load_from_file(cls):
+        """returns a list of instances."""
+        filename = cls.__name__ + ".json"
+        lst = []
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                s = f.read()
+                list_dicts = cls.from_json_string(s)
+                for d in list_dicts:
+                    lst.append(cls.create(**d))
+        return lst
 
-    def test_to_json_type(self):
-        """
-           test to_json type
-        """
-        sq = Square(9)
-        json_dict = sq.to_dictionary()
-        json_string = Base.to_json_string([json_dict])
-        self.assertEqual(type(json_string), str)
+    @classmethod
+    def save_to_file_csv(cls, list_objs):
+        """Serializes list_objs in CSV format
+        and saves it to a file.
 
-    def test_to_json_value(self):
+        Args:
+            - list_objs: list of instances
         """
-             Test to json value (string)
-        """
-        sq = Square(1, 0, 0, 9)
-        json_dict = sq.to_dictionary()
-        json_string = Base.to_json_string([json_dict])
-        self.assertEqual(json.loads(json_string), [{"id": 9, "y": 0,
-                                                    "size": 1, "x": 0}])
 
-    def test_to_json_None(self):
-        """
-            test to json None
-        """
-        json_string = Base.to_json_string(None)
-        self.assertEqual(json_string, "[]")
+        if (type(list_objs) != list and
+           list_objs is not None or
+           not all(isinstance(x, cls) for x in list_objs)):
+            raise TypeError("list_objs must be a list of instances")
 
-    def test_to_json_empty(self):
-        """
-            test to_json Empty
-        """
-        json_string = Base.to_json_string([])
-        self.assertEqual(json_string, "[]")
+        filename = cls.__name__ + ".csv"
+        with open(filename, 'w') as f:
+            if list_objs is not None:
+                list_objs = [x.to_dictionary() for x in list_objs]
+                if cls.__name__ == 'Rectangle':
+                    fields = ['id', 'width', 'height', 'x', 'y']
+                elif cls.__name__ == 'Square':
+                    fields = ['id', 'size', 'x', 'y']
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(list_objs)
 
-    def test_from_json_string(self):
-        """
-            test from json_string
-        """
-        sq = Square(1, 0, 0, 234)
-        json_dict = sq.to_dictionary()
-        json_string = Base.to_json_string([json_dict])
-        json_list = Base.from_json_string(json_string)
-        self.assertEqual(json_list, [{'size': 1, 'x': 0, 'y': 0, 'id': 234}])
+    @classmethod
+    def load_from_file_csv(cls):
+        """Deserializes CSV format from a file.
 
-    def test_from_json_none(self):
+        Returns: list of instances
         """
-            Test from json none
-        """
-        json_list = Base.from_json_string(None)
-        self.assertEqual(json_list, [])
 
-    def test_from_json_empty(self):
+        filename = cls.__name__ + ".csv"
+        lst = []
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                reader = csv.reader(f, delimiter=',')
+                if cls.__name__ == 'Rectangle':
+                    fields = ['id', 'width', 'height', 'x', 'y']
+                elif cls.__name__ == 'Square':
+                    fields = ['id', 'size', 'x', 'y']
+                for x, row in enumerate(reader):
+                    if x > 0:
+                        i = cls(1, 1)
+                        for j, e in enumerate(row):
+                            if e:
+                                setattr(i, fields[j], int(e))
+                        lst.append(i)
+        return lst
+
+    @classmethod
+    def draw(cls, list_rectangles, list_squares):
+        """opens a window and draws all the Rectangles and Squares.
+        Args:
+            list_rectangles:
+            list_squares:
         """
-            test from json none
-        """
-        json_list = Base.from_json_string([])
-        self.assertEqual(json_list, [])
+        window = turtle.Screen()
+        pen = turtle.Pen()
+        figures = list_rectangles + list_squares
+
+        for fig in figures:
+            pen.up()
+            pen.goto(fig.x, fig.y)
+            pen.down()
+            pen.forward(fig.width)
+            pen.right(90)
+            pen.forward(fig.height)
+            pen.right(90)
+            pen.forward(fig.width)
+            pen.right(90)
+            pen.forward(fig.height)
+            pen.right(90)
+
+        window.exitonclick()
