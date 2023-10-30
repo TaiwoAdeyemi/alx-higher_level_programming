@@ -22,3 +22,4 @@ checking for method docstring:
 checking for method docstring:
 	>>> fint = __import__('7-base_geometry').BaseGeometry.integer_validator.__doc__
 	>>> len(fint) > 1
+	True
